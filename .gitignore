@@ -5,7 +5,7 @@ data/midi/*
 !data/midi/examples
 !data/midi/notebook_examples
 
-
+MusicTransformer.pth
 models/
 tmp_out/
 data_serve/
