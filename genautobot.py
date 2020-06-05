@@ -14,6 +14,11 @@ midi_path =  Path('data/midi/referencemids')
 # Location of saved datset
 data_path = Path('data/numpy')
 
+midiprobs = pickle.load(open("midiprobs.pcl", "rb"))
+all_inds = list(range(len(midiprobs)))
+all_inds.sort(reverse=True, key = lambda k: midiprobs[k])
+
+
 # Data
 data = MusicDataBunch.empty(data_path)
 vocab = data.vocab
@@ -31,7 +36,7 @@ midi_files = get_files(midi_path, recurse=True, extensions='.mid')
 random.shuffle(midi_files)
 
 
-for z in range(len(features)):
+for z in all_inds:
 	s = stream.Score()
 	onset = 0.0
 	seed_item = MusicItem.from_file(Path("data/midi/referencemidsC/" + str(z) + ".mid"), data.vocab)

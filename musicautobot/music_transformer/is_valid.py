@@ -3,6 +3,10 @@ import numpy as np
 
 def isValidPitch(prev_notes, ref_measure, references, k):
     ref_measure = [i - 20 if i >  88 else i for i in ref_measure]
+
+    for i in range(1,4):
+        if len(prev_notes) >= i and len(ref_measure) <= i:
+            return True
     #print(ref_measure)
     next_ref = ref_measure[len(prev_notes)] if len(ref_measure) > len(prev_notes) else ref_measure[random.choice([-3,-2,-1])]
     if references["hasSamePitches"]:
