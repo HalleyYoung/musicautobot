@@ -34,7 +34,7 @@ def getScore(vocab, poss_bar, references, ref_measure, prof):
         pits_durs_profile[pc] = sum([i[1] for i in pits_durs if i[0] % 12 == pc])
     symmetries_has = [(x[0], x[1](ref_measure, pits_durs)) for x in symmetries_functions_list]
     len_good = len([(sym_name, sym_value) for (sym_name, sym_value) in symmetries_has if sym_value and references[sym_name]])
-    return spatial.distance.cosine(pits_durs_profile, prof) + 10*len_good - max(0, abs(3 - len(set(pcs))))
+    return spatial.distance.cosine(pits_durs_profile, prof) + 10*len_good - max(0, abs(3 - len(set(pcs)))) - 2*len([k for k in durs if k == 1])
 
 
 
@@ -242,16 +242,17 @@ class MusicLearner(LanguageLearner):
             cur_bar = None
             cur_bar_score = -10000
             print("j_ " + str(j_))
-            prev_pits = []
-            prev_durs = []
+
             prev_logits = []
             for qq in range(5):
                 tot_len_so_far = 0
-
+                prev_pits = []
+                prev_durs = []
                 print("q_ " + str(qq))
                 poss_bar = []
                 x_ = copy.copy(x)#[-112:]
                 for i_ in range(60):
+
                     x_ = x_[-112:]
                     start_time = time()
                     print("i_" + str(i_))
@@ -287,7 +288,7 @@ class MusicLearner(LanguageLearner):
                     print("pre-time is " + str(time() - start_time))
                     mid_time = time()
                     logits = filter_invalid_indexes(logits, prev_idx, vocab, filter_value=filter_value)
-                    logits = filter_invalid_indices(vocab, logits, prev_idx, prev_pits, prev_durs, ref_measures[j_], references[j_], prof, tot_len_so_far)
+                    logits = filter_invalid_indices(vocab, logits, prev_idx, prev_pits, prev_durs, ref_measures, ref_measures[j_], references[j_], prof, tot_len_so_far)
                     print("mid time is " + str(time() - mid_time))
                     #logits = top_k_top_p(logits, top_k=top_k, top_p=top_p, filter_value=filter_value)
                     mid_time2 = time()
@@ -311,8 +312,10 @@ class MusicLearner(LanguageLearner):
                         #print("innnnnnnnn" + str(prev_durs))
                         poss_bar.append(vocab.sep_idx)
                         score_bar = getScore(vocab, poss_bar, references[j_], ref_measures[j_], prof)
+                        print("comp " + str((prev_durs, prev_pits, ref_measures[j_])))
+
                         if score_bar > cur_bar_score:
-                            print("score greater")
+                            print("score equal")
                             cur_bar = poss_bar
                             cur_bar_score = score_bar
                         break
@@ -322,6 +325,8 @@ class MusicLearner(LanguageLearner):
                         #print(getLength(new_idx, vocab))
                         poss_bar.append(vocab.sep_idx)
                         score_bar = getScore(vocab, poss_bar, references[j_], ref_measures[j_], prof)
+                        print("comp " + str((prev_durs, prev_pits, ref_measures[j_])))
+
                         if score_bar > cur_bar_score:
                             print("score greater")
                             cur_bar = poss_bar
@@ -394,7 +399,7 @@ def filter_invalid_indexes(res, prev_idx, vocab, filter_value=-float('Inf')):
 def getLength(xs, vocab):
     return sum([i - vocab.dur_range[0] + 1 for i in xs if i in range(*vocab.dur_range)])
 
-def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measure, references, pitch_profile, tot_len_so_far = 0):
+def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measures, ref_measure, references, pitch_profile, tot_len_so_far = 0):
     #print(prev_idx in range(*vocab.dur_range))
     #print(prev_idx in range(*vocab.note_range))
 
@@ -410,20 +415,20 @@ def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measu
             if k in range(*vocab.note_range):
                 if res[k] != -float("Inf"):
                     #print(prev_pits)
-                    if not isValidPitch(prev_pits, [i[0] for i in ref_measure], references, k - vocab.note_range[0]):
+                    if not isValidPitch(prev_pits, concat([[i[0] for i in q] for q in ref_measures]), [i[0] for i in ref_measure], references, k - vocab.note_range[0]):
                         res[k] -= 20
                     else:
                         res[k] += 20
-                res[k] += 20*pitch_profile[k % 12]             
+                res[k] += 5*pitch_profile[k % 12]             
             else:
                 res[k] = -float("Inf")
     elif prev_idx in range(*vocab.note_range):
         all_inf = True
 
         for k in range(len(res)):
-            if k in range(*vocab.dur_range):
+            if k in range(vocab.dur_range[0], vocab.dur_range[0] + 16):
                 if res[k] != -float("Inf"):
-                    if not isValidDur(prev_durs, [int(i[1]*4) for i in ref_measure], references, k - vocab.dur_range[0]):
+                    if not isValidDur(prev_durs, [int(i[1]*4) for i in ref_measure], references, k - vocab.dur_range[0] + 1):
                         res[k] =-float("Inf")#0.00001*res[k]
                     else:
                         #print("in else") 
@@ -435,7 +440,7 @@ def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measu
             else:
                 res[k] = -float("Inf")
         if all_inf:
-            print("innnnnn all_inf")
+            print("crazy times")
             res[vocab.dur_range[0]] = 0.01
             
         #print(res[vocab.note_range[0]:vocab.note_range[1]])

@@ -36,7 +36,7 @@ midi_files = get_files(midi_path, recurse=True, extensions='.mid')
 random.shuffle(midi_files)
 
 
-for z in all_inds:
+for z in range(1005, 1015):#all_inds[10:]:
 	s = stream.Score()
 	onset = 0.0
 	seed_item = MusicItem.from_file(Path("data/midi/referencemidsC/" + str(z) + ".mid"), data.vocab)
@@ -67,7 +67,7 @@ for z in all_inds:
 		
 		for i in range(len(pits)):
 			pc = pits[i] % 12
-			closest_pc = min(range(60 + pc, pc+84, 12), key = lambda j: abs(j - prev_note))
+			closest_pc = min(range(48 + pc, pc+84, 12), key = lambda j: abs(j - prev_note))
 			n = note.Note(closest_pc)
 			n.quarterLength = (durs[i])
 			s.insert(onset, n)
