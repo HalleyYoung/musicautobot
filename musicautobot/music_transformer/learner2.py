@@ -80,9 +80,9 @@ class MusicLearner(LanguageLearner):
         if temperature != 1.: scores.div_(temperature)
         node_idx = torch.multinomial(torch.exp(-scores), 1).item()
         return [i.item() for i in nodes[node_idx][xb_length:] ]
-    def predict2(self, item:MusicItem, n_words:int=128,
-                     temperatures:float=(1.0,1.0), min_bars=4,
-                     top_k=30, top_p=0.6):
+
+        
+    def predict2(self, item:MusicItem, n_words:int=128, temperatures:float=(1.0,1.0), min_bars=4,top_k=30, top_p=0.6):
         self.model.reset()
         new_idx = []
         vocab = self.data.vocab
@@ -314,18 +314,17 @@ def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measu
             if k in range(*vocab.note_range):
                 if res[k] != -float("Inf"):
                     #print(prev_pits)
-                    if not isValidPitch(prev_pits, [i[0] for i in ref_measure], references, k - vocab.note_range[0]):
+                    if False: #not isValidPitch(prev_pits, [i[0] for i in ref_measure], references, k - vocab.note_range[0]):
                         res[k] = -float("Inf")
                     else:
                         pass
             else:
                 res[k] = -float("Inf")
     elif prev_idx in range(*vocab.note_range):
-        all_inf = True
         for k in range(len(res)):
             if k in range(*vocab.dur_range):
                 if res[k] != -float("Inf"):
-                    if not isValidDur(prev_durs, [int(i[1]*4) for i in ref_measure], references, k - vocab.dur_range[0]):
+                    if False:#not isValidDur(prev_durs, [int(i[1]*4) for i in ref_measure], references, k - vocab.dur_range[0]):
                         res[k] = -float("Inf")#0.00001*res[k]
                     else:
                         #print("in else") 
@@ -336,13 +335,7 @@ def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measu
                     res[k] = -float("Inf")
             else:
                 res[k] = -float("Inf")
-        if all_inf:
-            print("innnnnn all_inf")
-            res[vocab.dur_range[0]] = 0.01
-            
-        #print(res[vocab.note_range[0]:vocab.note_range[1]])
-    else:
-        print("previdx " + str(prev_idx))
+        
         #0.1*res[k]
     #print(res[vocab.dur_range[0]:vocab.dur_range[1]])
     """

@@ -41,6 +41,52 @@ for z in range(2000):#all_inds[10:]:
 	s = stream.Score()
 	onset = 0.0
 	seed_item = MusicItem.from_file(Path("data/midi/referencemidsC/" + str(z) + ".mid"), data.vocab)
+	
+
+	#produce unconstrained version
+	s = stream.Score()
+	onset = 0.0
+	seed_item = MusicItem.from_file(Path("data/midi/referencemidsC/" + str(z) + ".mid"), data.vocab)
+	
+	pred = learn.predict2(seed_item, n_words=400, temperatures=(0.2,0.4), min_bars=12, top_k=24, top_p=0.7)
+
+	prev_note = 60
+	for val in pred:
+		a = val.to_text().split()
+		print(a)
+		xxseps = [i for i in range(len(a)) if a[i].startswith("xxsep")]
+		if 0 not in xxseps:
+			xxseps = [0] + xxseps
+		between_seps = [a[xxseps[i]:xxseps[i + 1]] for i in range(len(xxseps) - 1)]
+
+		pits = []
+		durs = []
+		for q in between_seps:
+			print(q)
+			pits.append([int(k[1:]) for k in q if k.startswith("n")][0])
+			durs.append([(int(k[1:]) + 1)/4 for k in q if k.startswith("d")][0])
+
+
+		#pits = [int(a[i + 1][1:]) for i in xxseps]
+		#print((pits))
+		#durs = [(int(a[i+2][1:]) + 1)/4 for i in xxseps]
+		print((durs))
+
+		if len(pits) != len(durs):
+			print(a)
+
+		
+		for i in range(len(pits)):
+			pc = pits[i] % 12
+			closest_pc = min(range(48 + pc, pc+84, 12), key = lambda j: abs(j - prev_note))
+			n = note.Note(closest_pc)
+			n.quarterLength = (durs[i])
+			s.insert(onset, n)
+			onset += durs[i]
+			prev_note = closest_pc
+	s.write(fp="ablation/test" + str(z) + ".mid", fmt="midi")
+
+	#produce constrained version
 	pred = learn.predict(seed_item, n_words=400, temperatures=(0.2,0.4), min_bars=12, top_k=24, top_p=0.7, references=features[z], ref_measures=ref_measures[z], pitch_profile = ref_profile[z])
 
 	prev_note = 60
@@ -53,8 +99,8 @@ for z in range(2000):#all_inds[10:]:
 		pits = []
 		durs = []
 		for q in between_seps:
-			pits.append([int(z[1:]) for z in q if z.startswith("n")][0])
-			durs.append([(int(z[1:]) + 1)/4 for z in q if z.startswith("d")][0])
+			pits.append([int(k[1:]) for k in q if k.startswith("n")][0])
+			durs.append([(int(k[1:]) + 1)/4 for k in q if k.startswith("d")][0])
 
 
 		#pits = [int(a[i + 1][1:]) for i in xxseps]
@@ -75,3 +121,4 @@ for z in range(2000):#all_inds[10:]:
 			onset += durs[i]
 			prev_note = closest_pc
 	s.write(fp="our-model/test" + str(z) + ".mid", fmt="midi")
+

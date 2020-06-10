@@ -134,13 +134,11 @@ class MusicLearner(LanguageLearner):
         else: encode_position = False
 
 
-    def predict2(self, item:MusicItem, n_words:int=128,
-                     temperatures:float=(1.0,1.0), min_bars=4,
-                     top_k=30, top_p=0.6):
+    def predict2(self, item:MusicItem, n_words:int=128, temperatures:float=(1.0,1.0), min_bars=4, top_k=30, top_p=0.6):
+        "Return the `n_words` that come after `text`."
         self.model.reset()
         new_idx = []
         vocab = self.data.vocab
-        x = x[-112:]
         x, pos = item.to_tensor(), item.get_pos_tensor()
         last_pos = pos[-1] if len(pos) else 0
         y = torch.tensor([0])
@@ -164,7 +162,7 @@ class MusicLearner(LanguageLearner):
                 else:
                     logits = self.model(x[None])[0][-1][-1]
 
-            prev_idx = poss_bar if len(new_idx) else vocab.pad_idx
+            prev_idx = new_idx[-1] if len(new_idx) else vocab.pad_idx
 
             # Temperature
             # Use first temperatures value if last prediction was duration
@@ -180,7 +178,8 @@ class MusicLearner(LanguageLearner):
             if ((last_pos - start_pos) // 16) <= min_bars: logits[vocab.bos_idx] = filter_value
 
             logits = filter_invalid_indexes(logits, prev_idx, vocab, filter_value=filter_value)
-            logits = top_k_top_p(logits, top_k=top_k, top_p=top_p, filter_value=filter_value)
+            #logits = top_k_top_p(logits, top_k=top_k, top_p=top_p, filter_value=filter_value)
+            logits = filter_invalid_indices2(vocab, logits, prev_idx)
             
             # Sample
             probs = F.softmax(logits, dim=-1)
@@ -205,6 +204,7 @@ class MusicLearner(LanguageLearner):
                 print('Predicted BOS token. Returning prediction...')
                 break
 
+            new_idx.append(idx)
             x = x.new_tensor([idx])
             pos = pos.new_tensor([last_pos])
 
@@ -456,4 +456,43 @@ def filter_invalid_indices(vocab, res, prev_idx, prev_pits, prev_durs, ref_measu
     """
     return res
 
+
+
+def filter_invalid_indices2(vocab, res, prev_idx):
+    #print(prev_idx in range(*vocab.dur_range))
+    #print(prev_idx in range(*vocab.note_range))
+
+
+    #print(prev_idx)
+    if prev_idx in range(*vocab.dur_range):
+        for k in range(len(res)):
+            if k != vocab.sep_idx:
+                res[k] = -float("Inf")
+            else:
+                res[k] = 20
+    elif prev_idx == vocab.sep_idx:
+        #print(res[vocab.note_range[0]:vocab.note_range[1]])
+        for k in range(len(res)):
+            if k in range(*vocab.note_range):
+                pass  
+            else:
+                res[k] = -float("Inf")
+    elif prev_idx in range(*vocab.note_range):
+
+        for k in range(len(res)):
+            if k in range(vocab.dur_range[0], vocab.dur_range[0] + 16):
+                pass
+            else:
+                res[k] = -float("Inf")
+            
+        #print(res[vocab.note_range[0]:vocab.note_range[1]])
+        #0.1*res[k]
+    #print(res[vocab.dur_range[0]:vocab.dur_range[1]])
+    """
+    else:
+        for i in range(len(res)):
+            if i != vocab.sep_idx:
+                res[i] = -float("Inf")
+    """
+    return res
 
